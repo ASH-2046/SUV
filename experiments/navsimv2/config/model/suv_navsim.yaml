@@ -1,0 +1,51 @@
+_target_: suv.runtime.create_suv
+model_id: ${oc.env:SUV_MODEL_ID,Wan2.2-TI2V-5B}
+tokenizer_model_id: ${oc.env:SUV_TOKENIZER_MODEL_ID,Wan2.2-TI2V-5B}
+tokenizer_max_len: 512
+load_text_encoder: false
+proprio_dim: 11
+redirect_common_files: false
+mot_checkpoint_mixed_attn: false
+
+video_dit_config:
+  has_image_input: false
+  patch_size: [1, 2, 2]
+  in_dim: 48
+  hidden_dim: 3072
+  ffn_dim: 14336
+  freq_dim: 256
+  text_dim: 4096
+  out_dim: 48
+  num_heads: 24
+  attn_head_dim: 128
+  num_layers: 30
+  eps: 1.0e-06
+  seperated_timestep: true
+  require_clip_embedding: false
+  require_vae_embedding: false
+  fuse_vae_embedding_in_latents: true
+  use_gradient_checkpointing: ${model.mot_checkpoint_mixed_attn}
+  video_attention_mask_mode: "first_frame_causal"
+  action_conditioned: false
+  action_dim: 3
+  action_group_causal_mask_mode: "group_diagonal"
+
+action_dit_config:
+  action_dim: 3
+  hidden_dim: 1024
+  ffn_dim: 4096
+  num_heads: 24
+  attn_head_dim: 128
+  num_layers: 30
+  text_dim: 4096
+  freq_dim: 256
+  eps: 1.0e-06
+  use_gradient_checkpointing: ${model.mot_checkpoint_mixed_attn}
+
+video_scheduler:
+  shift: 5.0
+  num_timesteps: 1000
+
+action_scheduler:
+  shift: 5.0
+  num_timesteps: 1000
