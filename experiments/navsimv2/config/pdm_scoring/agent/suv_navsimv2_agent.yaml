@@ -28,7 +28,7 @@ action_prompt: null
 action_prompt_future_instruction: null
 action_prompt_quality_instruction: null
 stagea_modality: null
-slot_inference: false
+slot_inference: true
 context_len: 512
 text_encoder_id: wan22ti2v5b
 mixed_precision: bf16

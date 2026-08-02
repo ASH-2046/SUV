@@ -32,6 +32,7 @@ DEFAULT_MODEL_ID = "Wan2.2-TI2V-5B"
 DEFAULT_TOKENIZER_MODEL_ID = "Wan2.2-TI2V-5B"
 DEFAULT_CONTEXT_LEN = 512
 DEFAULT_BATCH_SIZE = 16
+SLOT_JOINT_MODALITIES = ("rgb", "depth", "seg", "instance")
 
 def _str_to_bool(value: str | bool) -> bool:
     if isinstance(value, bool):
@@ -131,25 +132,28 @@ def _tokens_for_split(scene_loader) -> list[str]:
 def _build_prompt_from_agent_input(
     agent_input,
     args: argparse.Namespace,
+    *,
+    stagea_modality: str,
 ) -> str:
     from experiments.navsimv1.data.features import NavsimV1FeatureBuilder
-    from experiments.navsimv1.data.prompts import build_navsim_prompts
+    from experiments.navsimv1.data.prompts import build_navsim_prompts, stagea_prompt_overrides
 
     ego_status = NavsimV1FeatureBuilder._ego_status_tensor(agent_input)
+    prompt_prefix, future_instruction, quality_instruction = stagea_prompt_overrides(stagea_modality)
     history_seconds = (
         float(ego_status.shape[0]) / float(args.fps)
         if args.prompt_history_seconds is None
         else float(args.prompt_history_seconds)
     )
     return build_navsim_prompts(
-        prompt_prefix=args.prompt,
+        prompt_prefix=prompt_prefix,
         ego_status=ego_status.unsqueeze(0),
         batch_size=1,
         history_seconds=history_seconds,
         future_seconds=float(args.num_future_frames) / float(args.fps),
         mode=args.prompt_mode,
-        future_instruction=args.prompt_future_instruction,
-        quality_instruction=args.prompt_quality_instruction,
+        future_instruction=future_instruction,
+        quality_instruction=quality_instruction,
         velocity_quantization=args.prompt_velocity_quantization,
         acceleration_quantization=args.prompt_acceleration_quantization,
     )[0]
@@ -165,10 +169,14 @@ def _collect_unique_prompts(args: argparse.Namespace) -> tuple[list[str], dict[s
     seen: set[str] = set()
     for token in tqdm(tokens, desc="Scanning PDM prompts", dynamic_ncols=True):
         agent_input = scene_loader.get_agent_input_from_token(token)
-        prompt = _build_prompt_from_agent_input(agent_input, args)
-        if prompt not in seen:
-            seen.add(prompt)
-            prompts.append(prompt)
+        sample_prompts = [
+            _build_prompt_from_agent_input(agent_input, args, stagea_modality=modality)
+            for modality in SLOT_JOINT_MODALITIES
+        ]
+        for prompt in sample_prompts:
+            if prompt not in seen:
+                seen.add(prompt)
+                prompts.append(prompt)
 
     stats = {
         "tokens": len(tokens),

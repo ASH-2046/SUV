@@ -144,7 +144,7 @@ class SUVNavsimV2Agent(AbstractAgent):
         action_prompt_quality_instruction: str | None = None,
         stagea_modality: str | None = None,
         slot_modalities: str | list[str] | tuple[str, ...] | None = None,
-        slot_inference: bool = False,
+        slot_inference: bool = True,
         context_len: int = 512,
         text_encoder_id: str = "wan22ti2v5b",
         mixed_precision: str = "bf16",
@@ -292,6 +292,14 @@ class SUVNavsimV2Agent(AbstractAgent):
     def initialize(self) -> None:
         if self.model is not None:
             return
+        if self.visual_conditioning != "history_4":
+            raise RuntimeError(
+                "The released SUV checkpoint requires visual_conditioning=history_4."
+            )
+        if not self.slot_inference:
+            raise RuntimeError(
+                "SUV NAVSIM v2 evaluation requires slot_inference=true for joint denoising."
+            )
         device = self.device_name
         if device.startswith("cuda") and not torch.cuda.is_available():
             logger.warning("CUDA requested but unavailable; using CPU for SUV NAVSIM agent.")
@@ -306,9 +314,14 @@ class SUVNavsimV2Agent(AbstractAgent):
         model_cfg = model_root.model
         model_dtype = _mixed_precision_to_model_dtype(_normalize_mixed_precision(self.mixed_precision))
         self.model = instantiate(model_cfg, model_dtype=model_dtype, device=device)
+        if not bool(getattr(self.model, "joint_future_access", False)):
+            raise RuntimeError(
+                "SUV NAVSIM v2 evaluation requires SUVJoint with joint future-scene access."
+            )
+        logger.info("SUV joint future-scene access enabled for NAVSIM v2 evaluation.")
 
         checkpoint = _resolve_checkpoint(self.checkpoint_path)
-        logger.info("Loading SUV NAVSIM v2 checkpoint for PDM eval: %s", checkpoint)
+        logger.info("Loading SUV NAVSIM v2 checkpoint for EPDMS evaluation: %s", checkpoint)
         self.model.load_checkpoint(str(checkpoint))
         self.model.eval()
 
@@ -320,7 +333,7 @@ class SUVNavsimV2Agent(AbstractAgent):
             raise FileNotFoundError(
                 f"Missing text embedding cache for prompt {prompt!r}: {cache_path}. "
                 f"hash={hashed}, cache_dir={cache_dir}. "
-                "Run experiments/navsimv2/scripts/evaluation/precompute_suv_navsimv2_pdm_text_embeds.sh first."
+                "Run experiments/navsimv2/scripts/evaluation/precompute_text_embeddings.sh first."
             )
         payload = torch.load(str(cache_path), map_location="cpu")
         context = payload["context"]

@@ -122,7 +122,7 @@ class SUVNavsimV1Agent(AbstractAgent):
         prompt_velocity_quantization: float = 0.5,
         prompt_acceleration_quantization: float = 0.5,
         stagea_modality: str | None = None,
-        slot_inference: bool = False,
+        slot_inference: bool = True,
         context_len: int = 512,
         text_encoder_id: str = "wan22ti2v5b",
         mixed_precision: str = "bf16",
@@ -233,6 +233,14 @@ class SUVNavsimV1Agent(AbstractAgent):
     def initialize(self) -> None:
         if self.model is not None:
             return
+        if self.visual_conditioning != "history_4":
+            raise RuntimeError(
+                "The released SUV checkpoint requires visual_conditioning=history_4."
+            )
+        if not self.slot_inference:
+            raise RuntimeError(
+                "SUV NAVSIM v1 evaluation requires slot_inference=true for joint denoising."
+            )
         device = self.device_name
         if device.startswith("cuda") and not torch.cuda.is_available():
             logger.warning("CUDA requested but unavailable; using CPU for SUV NAVSIM agent.")
@@ -247,6 +255,11 @@ class SUVNavsimV1Agent(AbstractAgent):
         model_cfg = model_root.model
         model_dtype = _mixed_precision_to_model_dtype(_normalize_mixed_precision(self.mixed_precision))
         self.model = instantiate(model_cfg, model_dtype=model_dtype, device=device)
+        if not bool(getattr(self.model, "joint_future_access", False)):
+            raise RuntimeError(
+                "SUV NAVSIM v1 evaluation requires SUVJoint with joint future-scene access."
+            )
+        logger.info("SUV joint future-scene access enabled for NAVSIM v1 evaluation.")
 
         checkpoint = _resolve_checkpoint(self.checkpoint_path)
         logger.info("Loading SUV NAVSIM v1 checkpoint for PDM eval: %s", checkpoint)

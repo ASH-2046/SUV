@@ -28,6 +28,15 @@ and does not rely on candidate-trajectory selection.
 > - **Paper:** arXiv link coming soon
 > - If you have any questions, please feel free to contact: *Yibo Yuan* ([Yyb_XJTU@stu.xjtu.edu.cn](mailto:Yyb_XJTU@stu.xjtu.edu.cn)).
 
+## Contents
+
+- [Method](#method)
+- [Demos](#qualitative-demos)
+- [Results](#results)
+- [Installation](#installation)
+- [Evaluation](#evaluation)
+- [Citation](#citation)
+
 ## TODO
 
 - [x] Release the pretrained checkpoint, inference code, and
@@ -47,6 +56,8 @@ and does not rely on candidate-trajectory selection.
   preserving directed information flow.
 - **Strong NAVSIM-v2 performance.** SUV reaches **91.0 EPDMS** on `navtest` and
   **36.9 EPDMS** on `navhard` with a single front camera.
+- **Native multi-GPU evaluation.** Text-embedding preparation and NAVSIM v1/v2
+  scoring shard work across the selected GPUs and merge results automatically.
 
 ## Method
 
@@ -57,10 +68,71 @@ and does not rely on candidate-trajectory selection.
 SUV initializes its shared video expert from Wan2.2-5B. Given a front-camera
 observation history, navigation command, and ego state, it jointly denoises
 four future video streams and the ego trajectory over a 4-second horizon. The
-action expert accesses the evolving future-stream tokens directly; video
-decoding is not required for planning.
+action expert reads future-stream tokens directly without decoding the videos.
+
+## Qualitative Demos
+
+Each example shows the current observation and planned ego trajectory alongside
+jointly generated RGB, relative depth, semantic segmentation, and instance
+tracks over the next four seconds.
+
+<table align="center">
+  <tr>
+    <td align="center" colspan="2">
+      <p><b>Lane Change</b></p>
+      <a href="assets/demos/lane_change.mp4">
+        <img src="assets/demos/lane_change.gif" width="100%" alt="Lane change demo">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <p><b>Roundabout Negotiation</b></p>
+      <a href="assets/demos/roundabout_negotiation.mp4">
+        <img src="assets/demos/roundabout_negotiation.gif" width="100%" alt="Roundabout negotiation demo">
+      </a>
+    </td>
+    <td align="center" width="50%">
+      <p><b>Unprotected Left Turn</b></p>
+      <a href="assets/demos/unprotected_left_turn.mp4">
+        <img src="assets/demos/unprotected_left_turn.gif" width="100%" alt="Unprotected left turn demo">
+      </a>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <p><b>Rainy Urban Intersection</b></p>
+      <a href="assets/demos/rainy_urban_intersection.mp4">
+        <img src="assets/demos/rainy_urban_intersection.gif" width="100%" alt="Rainy urban intersection demo">
+      </a>
+    </td>
+    <td align="center" width="50%">
+      <p><b>Construction Zone</b></p>
+      <a href="assets/demos/construction_zone.mp4">
+        <img src="assets/demos/construction_zone.gif" width="100%" alt="Construction zone demo">
+      </a>
+    </td>
+  </tr>
+</table>
 
 ## Results
+
+### NAVSIM v1 (↑ higher is better)
+
+Results follow the official PDMS protocol. Baselines use their published sensor
+and candidate configurations. SUV uses one front camera, ten solver steps, and
+outputs one trajectory.
+
+| Method | NC | DAC | TTC | Comfort | EP | PDMS |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Drive-JEPA | 98.7 | 96.2 | 100 | 95.5 | 82.9 | 89.0 |
+| DriveVLA-W0 | 98.7 | 96.2 | 95.5 | 100 | 82.2 | 88.4 |
+| AutoDrive-P3 | 99.1 | 97.4 | 96.5 | 100 | 84.8 | 90.6 |
+| ReCogDrive | 97.9 | 97.3 | 94.9 | 100 | 87.3 | **90.8** |
+| EponaV2 | 98.6 | 97.9 | 95.7 | 100 | 84.8 | 90.4 |
+| Metis | 98.3 | 97.1 | 94.7 | 100 | 83.4 | 89.1 |
+| Metis (Top 6) | 98.5 | 97.5 | 95.1 | 100 | 84.0 | 89.7 |
+| **SUV** | 99.1 | 97.8 | 96.7 | 100 | 84.6 | **90.8** |
 
 ### NAVSIM v2
 
@@ -68,9 +140,9 @@ The following results use the corrected official EPDMS implementation. SUV
 uses one front camera and ten solver steps. It does not use top-k trajectory
 selection.
 
-#### `navtest`
+#### `navtest` (↑ higher is better)
 
-| Method | Sensors | NC ↑ | DAC ↑ | DDC ↑ | TLC ↑ | EP ↑ | TTC ↑ | LK ↑ | HC ↑ | EC ↑ | EPDMS ↑ |
+| Method | Sensors | NC | DAC | DDC | TLC | EP | TTC | LK | HC | EC | EPDMS |
 | --- | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | DriveVLA-W0 | 1×C | 98.4 | 95.2 | 99.4 | 99.9 | 86.6 | 97.9 | 97.8 | 98.3 | 82.7 | 86.9 |
 | EponaV2 | 1×C | 98.5 | 97.4 | 99.5 | 99.9 | 87.9 | 98.1 | 97.7 | 98.2 | 77.4 | 88.9 |
@@ -78,12 +150,12 @@ selection.
 | Metis (Top 6) | 1×C | 98.5 | 97.5 | 99.6 | 99.8 | 87.9 | 97.8 | 98.0 | 98.4 | 90.0 | 90.3 |
 | **SUV** | **1×C** | 99.1 | 97.8 | 99.7 | 99.8 | 87.8 | 98.7 | 98.1 | 98.4 | 88.3 | **91.0** |
 
-#### `navhard`
+#### `navhard` (↑ higher is better)
 
 All listed methods use one front camera. S1 and S2 are the two official
 `navhard` stages; EPDMS is the combined score.
 
-| Method | Stage | NC ↑ | DAC ↑ | DDC ↑ | TLC ↑ | EP ↑ | TTC ↑ | LK ↑ | HC ↑ | EC ↑ | S. ↑ | EPDMS ↑ |
+| Method | Stage | NC | DAC | DDC | TLC | EP | TTC | LK | HC | EC | S. | EPDMS |
 | --- | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | DriveVLA-W0 | S1 | 96.8 | 83.3 | 99.0 | 99.6 | 84.6 | 95.3 | 96.4 | 97.6 | 78.2 | - | 24.4 |
 |  | S2 | 76.8 | 64.3 | 79.9 | 98.3 | 89.2 | 75.0 | 46.8 | 95.8 | 53.1 | - |  |
@@ -102,8 +174,9 @@ The same SUV checkpoint supports NAVSIM v1 and NAVSIM v2 evaluation.
 | --- | --- | --- | --- |
 | SUV | Wan2.2-TI2V-5B | Single front camera | Coming soon |
 
-The public checkpoint URL and checksum will be added before release. Until
-then, the commands below use `/path/to/suv_navsim.pt` as a placeholder.
+The public checkpoint URL and checksum will be added before release. Set the
+single `CKPT_LOCAL_DIR` path at the top of each evaluation script after
+downloading the release files.
 
 ## Installation
 
@@ -128,15 +201,15 @@ caches by following the corresponding NAVSIM instructions. The expected common
 paths are:
 
 ```bash
-export DIFFSYNTH_MODEL_BASE_PATH=/path/to/wan/checkpoints
 export OPENSCENE_DATA_ROOT=/path/to/navsim
 export NUPLAN_MAPS_ROOT=/path/to/navsim/maps
 export NAVSIM_EXP_ROOT=/path/to/evaluation_outputs
 ```
 
-`DIFFSYNTH_MODEL_BASE_PATH` must contain the public Wan2.2-TI2V-5B components.
-The SUV checkpoint contains the video/action expert weights, so a separate
-ActionDiT checkpoint is not required.
+The configured `CKPT_LOCAL_DIR` contains `suv_navsim.pt` and the public
+Wan2.2-TI2V-5B components. Set `TEXT_EMBEDDING_CACHE_DIR` separately for the
+generated prompt embeddings. The SUV checkpoint contains the video/action
+expert weights, so a separate ActionDiT checkpoint is not required.
 
 The default dataset layout is:
 
@@ -152,22 +225,20 @@ ${OPENSCENE_DATA_ROOT}/
 ## Evaluation
 
 Text embeddings depend on the dynamic driving prompts and must be prepared once
-before scoring. Set `CUDA_VISIBLE_DEVICES=0,1,...` to shard evaluation logs
-across multiple GPUs.
+before scoring. All preparation and evaluation entrypoints default to four-GPU
+sharding with `CUDA_VISIBLE_DEVICES=0,1,2,3`; set it to a single ID only when a
+single-GPU run is required.
 
 ### NAVSIM v1
 
-Point `NAVSIM_DEVKIT_ROOT` to a compatible NAVSIM v1 checkout:
+NAVSIM v1 uses the package installed in the active environment:
 
 ```bash
-export NAVSIM_DEVKIT_ROOT=/path/to/navsim_v1
-
-CUDA_VISIBLE_DEVICES=0 \
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash experiments/navsimv1/scripts/evaluation/precompute_suv_navsimv1_pdm_text_embeds.sh
 
-CHECKPOINT_PATH=/path/to/suv_navsim.pt \
 METRIC_CACHE_PATH=/path/to/navsim_v1/metric_cache \
-CUDA_VISIBLE_DEVICES=0 \
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash experiments/navsimv1/scripts/evaluation/run_pdm_score.sh
 ```
 
@@ -176,18 +247,17 @@ overrides and multi-GPU options.
 
 ### NAVSIM v2 `navtest`
 
-NAVSIM v2 uses the vendored evaluation devkit by default:
+NAVSIM v2 uses the vendored evaluation devkit by default. Build the shared text
+embedding cache once; this command includes both `navtest` and
+`navhard_two_stage` prompts:
 
 ```bash
-TRAIN_TEST_SPLIT=navtest \
-CUDA_VISIBLE_DEVICES=0 \
-bash experiments/navsimv2/scripts/evaluation/precompute_suv_navsimv2_pdm_text_embeds.sh
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
+bash experiments/navsimv2/scripts/evaluation/precompute_text_embeddings.sh
 
-CHECKPOINT_PATH=/path/to/suv_navsim.pt \
-TRAIN_TEST_SPLIT=navtest \
 METRIC_CACHE_PATH=/path/to/navsim_v2/metric_cache \
-CUDA_VISIBLE_DEVICES=0 \
-bash experiments/navsimv2/scripts/evaluation/run_suv_navsimv2_pdm_score.sh
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
+bash experiments/navsimv2/scripts/evaluation/run_epdm_score.sh
 ```
 
 ### NAVSIM v2 `navhard`
@@ -200,24 +270,19 @@ export SYNTHETIC_SCENES_PATH=/path/to/navhard_two_stage/synthetic_scene_pickles
 export METRIC_CACHE_PATH=/path/to/navsim_v2/navhard_metric_cache
 ```
 
-Create the metric cache if it is not already available, then prepare prompts
-and run the official two-stage scorer:
+Create the metric cache if it is not already available, then run the official
+two-stage scorer. The shared text embeddings prepared above already include
+the `navhard_two_stage` prompts:
 
 ```bash
 bash experiments/navsimv2/scripts/run_navhard_metric_caching.sh
 
-TRAIN_TEST_SPLIT=navhard_two_stage \
-CUDA_VISIBLE_DEVICES=0 \
-bash experiments/navsimv2/scripts/evaluation/precompute_suv_navsimv2_pdm_text_embeds.sh
-
-CHECKPOINT_PATH=/path/to/suv_navsim.pt \
-TRAIN_TEST_SPLIT=navhard_two_stage \
-CUDA_VISIBLE_DEVICES=0 \
-bash experiments/navsimv2/scripts/evaluation/run_suv_navsimv2_pdm_score.sh
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
+bash experiments/navsimv2/scripts/evaluation/run_navhard_epdm_score.sh
 ```
 
 See the [NAVSIM v2 evaluation guide](experiments/navsimv2/README.md) for the
-complete path configuration and multi-GPU behavior.
+complete path configuration.
 
 ## Repository Structure
 

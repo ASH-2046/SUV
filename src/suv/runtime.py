@@ -22,7 +22,7 @@ def _mixed_precision_to_model_dtype(mixed_precision: str) -> torch.dtype:
     return torch.bfloat16
 
 
-def create_suv(
+def create_suv_joint(
     model_id: str,
     tokenizer_model_id: str,
     video_dit_config,
@@ -37,7 +37,7 @@ def create_suv(
     model_dtype: torch.dtype = torch.bfloat16,
     device: str = "cuda",
 ):
-    from .models.wan22.suv import SUV
+    from .models.wan22.suv_joint import SUVJoint
 
     if isinstance(video_dit_config, DictConfig):
         video_dit_config = OmegaConf.to_container(video_dit_config, resolve=True)
@@ -72,7 +72,7 @@ def create_suv(
             "Expected keys: shift, num_timesteps."
         )
 
-    return SUV.from_wan22_pretrained(
+    return SUVJoint.from_wan22_pretrained(
         device=device,
         torch_dtype=model_dtype,
         model_id=model_id,

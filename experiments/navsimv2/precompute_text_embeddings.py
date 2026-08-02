@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Precompute SUV text embeddings for official NAVSIM v2 PDM evaluation splits."""
+"""Precompute SUV text embeddings for official NAVSIM v2 EPDMS evaluation splits."""
 
 from __future__ import annotations
 
@@ -219,7 +219,7 @@ def _collect_unique_prompts(args: argparse.Namespace) -> tuple[list[str], dict[s
     stage_one_count = len(getattr(scene_loader, "tokens_stage_one", []))
     stage_two_count = len(scene_loader.reactive_tokens_stage_two or []) if args.train_test_split == "navhard_two_stage" else 0
 
-    for token in tqdm(tokens, desc="Scanning PDM prompts", dynamic_ncols=True):
+    for token in tqdm(tokens, desc="Scanning EPDMS prompts", dynamic_ncols=True):
         agent_input = scene_loader.get_agent_input_from_token(token)
         if args.slot_inference:
             sample_prompts = [
@@ -335,9 +335,14 @@ def _encode_missing_prompts(prompts: list[str], args: argparse.Namespace, *, ran
 
 def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Precompute text embeddings for SUV official NAVSIM v2 PDM evaluation."
+        description="Precompute text embeddings for SUV official NAVSIM v2 EPDMS evaluation."
     )
-    parser.add_argument("--train-test-split", choices=["navtest", "navhard_two_stage"], required=True)
+    parser.add_argument(
+        "--train-test-split",
+        choices=["navtest", "navhard_two_stage", "all"],
+        required=True,
+        help="Use 'all' to build one shared cache for navtest and navhard_two_stage.",
+    )
     parser.add_argument("--navsim-log-path", required=True)
     parser.add_argument("--original-sensor-path", required=True)
     parser.add_argument("--synthetic-sensor-path", default="")
@@ -377,7 +382,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     from suv.utils.logging_config import setup_logging
 
     setup_logging(log_level=logging.INFO)
-    if args.train_test_split == "navhard_two_stage":
+    if args.train_test_split in {"navhard_two_stage", "all"}:
         if not args.synthetic_scenes_path:
             raise SystemExit("--synthetic-scenes-path is required for navhard_two_stage")
         if not args.synthetic_sensor_path:
@@ -386,15 +391,30 @@ def main(argv: Iterable[str] | None = None) -> int:
     import navsim
 
     logger.info("Importing navsim from: %s", Path(navsim.__file__).resolve().parent)
-    logger.info("PDM text embedding split: %s", args.train_test_split)
+    logger.info("EPDMS text embedding split: %s", args.train_test_split)
 
-    prompts, scan_stats = _collect_unique_prompts(args)
+    splits = (
+        ["navtest", "navhard_two_stage"]
+        if args.train_test_split == "all"
+        else [args.train_test_split]
+    )
+    prompts: list[str] = []
+    seen_prompts: set[str] = set()
+    for split in splits:
+        split_args = argparse.Namespace(**vars(args))
+        split_args.train_test_split = split
+        split_prompts, scan_stats = _collect_unique_prompts(split_args)
+        print(f"EPDMS prompt scan ({split}):")
+        for key, value in scan_stats.items():
+            print(f"  {key}: {value}")
+        for prompt in split_prompts:
+            if prompt not in seen_prompts:
+                seen_prompts.add(prompt)
+                prompts.append(prompt)
+
     cache_dir = Path(args.text_embedding_cache_dir).expanduser()
     enc_id = _model_id_to_enc_id(args.model_id)
 
-    print("PDM prompt scan:")
-    for key, value in scan_stats.items():
-        print(f"  {key}: {value}")
     _, missing = _print_prompt_cache_stats(prompts, cache_dir, int(args.context_len), enc_id)
     if args.validate_only and missing > 0:
         return 2

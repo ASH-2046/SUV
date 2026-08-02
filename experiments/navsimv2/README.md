@@ -1,34 +1,36 @@
 # SUV on NAVSIM v2
 
 This directory contains the NAVSIM v2 inference adapter, a vendored evaluation
-devkit, text-embedding preparation, and official PDM scoring paths.
+devkit, text-embedding preparation, and official EPDMS evaluation paths.
 
 ## Required paths
 
+Set `CKPT_LOCAL_DIR="/path/to/checkpoints"` once in each evaluation script.
+The SUV checkpoint and Wan components live under this root. Set the shared
+`TEXT_EMBEDDING_CACHE_DIR` separately for the navtest and navhard embeddings.
+
 ```bash
-export DIFFSYNTH_MODEL_BASE_PATH=/path/to/wan/checkpoints
 export OPENSCENE_DATA_ROOT=/path/to/navsim
 export NUPLAN_MAPS_ROOT=/path/to/navsim/maps
 export NAVSIM_EXP_ROOT=/path/to/evaluation_outputs
 ```
 
-Set `NAVSIM_DEVKIT_ROOT` only when using another compatible NAVSIM v2 checkout.
+Embedding preparation and scoring default to `CUDA_VISIBLE_DEVICES=0,1,2,3`
+and shard work across all listed GPUs.
 
 ## Standard navtest evaluation
 
+Build the shared text embedding cache once. It contains prompts for both
+`navtest` and `navhard_two_stage`, including all four visual slots:
+
 ```bash
-TRAIN_TEST_SPLIT=navtest \
-bash experiments/navsimv2/scripts/evaluation/precompute_suv_navsimv2_pdm_text_embeds.sh
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
+bash experiments/navsimv2/scripts/evaluation/precompute_text_embeddings.sh
 
-CHECKPOINT_PATH=/path/to/suv_navsim.pt \
-TRAIN_TEST_SPLIT=navtest \
 METRIC_CACHE_PATH=/path/to/navsim_v2/metric_cache \
-CUDA_VISIBLE_DEVICES=0 \
-bash experiments/navsimv2/scripts/evaluation/run_suv_navsimv2_pdm_score.sh
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
+bash experiments/navsimv2/scripts/evaluation/run_epdm_score.sh
 ```
-
-The scorer automatically uses the multi-GPU launcher when more than one GPU ID
-is supplied.
 
 ## NavHard two-stage evaluation
 
@@ -40,15 +42,12 @@ export SYNTHETIC_SCENES_PATH=/path/to/navhard_two_stage/synthetic_scene_pickles
 export METRIC_CACHE_PATH=/path/to/navsim_v2/navhard_metric_cache
 ```
 
-Create the metric cache when needed, then prepare embeddings and score:
+Create the metric cache when needed, then score. The shared cache prepared
+above already contains the `navhard_two_stage` embeddings:
 
 ```bash
 bash experiments/navsimv2/scripts/run_navhard_metric_caching.sh
 
-TRAIN_TEST_SPLIT=navhard_two_stage \
-bash experiments/navsimv2/scripts/evaluation/precompute_suv_navsimv2_pdm_text_embeds.sh
-
-CHECKPOINT_PATH=/path/to/suv_navsim.pt \
-TRAIN_TEST_SPLIT=navhard_two_stage \
-bash experiments/navsimv2/scripts/evaluation/run_suv_navsimv2_pdm_score.sh
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
+bash experiments/navsimv2/scripts/evaluation/run_navhard_epdm_score.sh
 ```

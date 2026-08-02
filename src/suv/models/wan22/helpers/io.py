@@ -46,8 +46,8 @@ class ModelConfig:
         return env.lower() == "true"
 
     def reset_local_model_path(self):
-        if os.environ.get("DIFFSYNTH_MODEL_BASE_PATH") is not None:
-            self.local_model_path = os.environ.get("DIFFSYNTH_MODEL_BASE_PATH")
+        if os.environ.get("CKPT_LOCAL_DIR") is not None:
+            self.local_model_path = os.environ.get("CKPT_LOCAL_DIR")
         elif self.local_model_path is None:
             self.local_model_path = "./checkpoints/"
 

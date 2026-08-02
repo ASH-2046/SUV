@@ -1,4 +1,4 @@
-_target_: suv.runtime.create_suv
+_target_: suv.runtime.create_suv_joint
 model_id: ${oc.env:SUV_MODEL_ID,Wan2.2-TI2V-5B}
 tokenizer_model_id: ${oc.env:SUV_TOKENIZER_MODEL_ID,Wan2.2-TI2V-5B}
 tokenizer_max_len: 512
