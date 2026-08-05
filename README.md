@@ -3,7 +3,7 @@
 # SUV: Future Scene Understanding as Video Generation for End-to-End Driving
 
 <p>
-  <a href="#citation"><img src="assets/arxiv_logo.png" alt="arXiv" height="18"> arXiv</a>
+  <a href="https://arxiv.org/abs/2608.03084"><img src="assets/arxiv_logo.png" alt="arXiv" height="18"> arXiv</a>
   &nbsp;&nbsp;•&nbsp;&nbsp;
   <a href="#model-zoo">🤗 Model Zoo</a>
   &nbsp;&nbsp;•&nbsp;&nbsp;
@@ -25,7 +25,7 @@ and does not rely on candidate-trajectory selection.
 ## Authors
 
 > - [Yibo Yuan](https://scholar.google.com/citations?user=ZimfkbYAAAAJ), [Jiacheng Fu](https://scholar.google.com/citations?user=-xnJpxsAAAAJ), [Jiangtong Zhu](https://scholar.google.com/citations?user=23Sy-mAAAAAJ), [Yi Li](https://scholar.google.com/citations?user=qGsK180AAAAJ), [Jianhua Han](https://scholar.google.com/citations?user=OEPMQEMAAAAJ), [Meng Tian](https://scholar.google.com/citations?user=btzoGAQAAAAJ), Zhuohan Liu, [Zhiwei Xiong](https://scholar.google.com/citations?user=Snl0HPEAAAAJ), [Hang Xu](https://scholar.google.com/citations?user=J_8TX6sAAAAJ), [Jianwu Fang](https://scholar.google.com/citations?user=hr8eDYsAAAAJ), and [Jianru Xue](https://scholar.google.com/citations?user=-qenJysAAAAJ)
-> - **Paper:** arXiv link coming soon
+> - **Paper:** [arXiv:2608.03084](https://arxiv.org/abs/2608.03084) | [PDF](https://arxiv.org/pdf/2608.03084)
 > - If you have any questions, please feel free to contact: *Yibo Yuan* ([Yyb_XJTU@stu.xjtu.edu.cn](mailto:Yyb_XJTU@stu.xjtu.edu.cn)).
 
 ## Contents
@@ -294,7 +294,16 @@ experiments/navsimv2/  NAVSIM v2 adapter, devkit, and official EPDMS evaluation
 
 ## Citation
 
-The public paper link and BibTeX entry will be added when available.
+If you find SUV useful, please cite our paper:
+
+```bibtex
+@article{yuan2026suv,
+  title={SUV: Future Scene Understanding as Video Generation for End-to-End Driving},
+  author={Yuan, Yibo and Fu, Jiacheng and Zhu, Jiangtong and Li, Yi and Han, Jianhua and Tian, Meng and Liu, Zhuohan and Xiong, Zhiwei and Xu, Hang and Fang, Jianwu and Xue, Jianru},
+  journal={arXiv preprint arXiv:2608.03084},
+  year={2026}
+}
+```
 
 ## Acknowledgements
 
