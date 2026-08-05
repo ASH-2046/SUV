@@ -5,7 +5,7 @@
 <p>
   <a href="https://arxiv.org/abs/2608.03084"><img src="assets/arxiv_logo.png" alt="arXiv" height="18"> arXiv</a>
   &nbsp;&nbsp;•&nbsp;&nbsp;
-  <a href="#model-zoo">🤗 Model Zoo</a>
+  <a href="https://huggingface.co/ASH-2046/SUV">🤗 Model Zoo</a>
   &nbsp;&nbsp;•&nbsp;&nbsp;
   <a href="#evaluation">🚗 Evaluation</a>
 </p>
@@ -170,13 +170,44 @@ All listed methods use one front camera. S1 and S2 are the two official
 
 The same SUV checkpoint supports NAVSIM v1 and NAVSIM v2 evaluation.
 
-| Model | Video backbone | Input | Checkpoint |
+| Model | Evaluation | Sensors | SUV checkpoint |
 | --- | --- | --- | --- |
-| SUV | Wan2.2-TI2V-5B | Single front camera | Coming soon |
+| SUV | NAVSIM v1 / v2 | 1× front camera | [Download (12 GB)](https://huggingface.co/ASH-2046/SUV) |
 
-The public checkpoint URL and checksum will be added before release. Set the
-single `CKPT_LOCAL_DIR` path at the top of each evaluation script after
-downloading the release files.
+The released `suv_navsim.pt` contains the trained SUV video and action expert
+weights. Wan2.2 is a separate runtime dependency downloaded from its official
+repository; Wan weights are not included in the SUV checkpoint.
+
+Install the Hugging Face CLI, then download the SUV checkpoint and the complete
+official Wan2.2 base-model directory:
+
+```bash
+pip install -U huggingface_hub
+
+mkdir -p SUV_ckpt
+hf download ASH-2046/SUV suv_navsim.pt \
+  --local-dir SUV_ckpt
+hf download Wan-AI/Wan2.2-TI2V-5B \
+  --local-dir SUV_ckpt/Wan2.2-TI2V-5B
+```
+
+The resulting layout is:
+
+```text
+SUV_ckpt/
+├── suv_navsim.pt
+└── Wan2.2-TI2V-5B/
+    ├── Wan2.2_VAE.pth
+    ├── models_t5_umt5-xxl-enc-bf16.pth
+    ├── diffusion_pytorch_model-*.safetensors
+    └── google/umt5-xxl/
+```
+
+Set the single `CKPT_LOCAL_DIR` path at the top of each preparation and
+evaluation script to this `SUV_ckpt` directory. Checksums for the SUV release
+file are listed on the [model card](https://huggingface.co/ASH-2046/SUV). The
+Wan directory comes directly from the
+[official Wan2.2 repository](https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B).
 
 ## Installation
 
@@ -206,10 +237,11 @@ export NUPLAN_MAPS_ROOT=/path/to/navsim/maps
 export NAVSIM_EXP_ROOT=/path/to/evaluation_outputs
 ```
 
-The configured `CKPT_LOCAL_DIR` contains `suv_navsim.pt` and the public
-Wan2.2-TI2V-5B components. Set `TEXT_EMBEDDING_CACHE_DIR` separately for the
-generated prompt embeddings. The SUV checkpoint contains the video/action
-expert weights, so a separate ActionDiT checkpoint is not required.
+The configured `CKPT_LOCAL_DIR` contains `suv_navsim.pt`, the Wan VAE, text
+encoder, and tokenizer shown above. Set `TEXT_EMBEDDING_CACHE_DIR` separately
+for the generated prompt embeddings. The SUV checkpoint contains the
+video/action expert weights, so a separate ActionDiT checkpoint is not
+required.
 
 The default dataset layout is:
 
@@ -225,18 +257,27 @@ ${OPENSCENE_DATA_ROOT}/
 ## Evaluation
 
 Text embeddings depend on the dynamic driving prompts and must be prepared once
-before scoring. All preparation and evaluation entrypoints default to four-GPU
-sharding with `CUDA_VISIBLE_DEVICES=0,1,2,3`; set it to a single ID only when a
-single-GPU run is required.
+before scoring. The preparation scripts scan the evaluation splits, encode each
+unique prompt with the Wan UMT5 text encoder, and save the resulting tensors to
+`TEXT_EMBEDDING_CACHE_DIR`. The scorer then reads this cache and does not load
+the text encoder again.
+
+Set `CKPT_LOCAL_DIR`, `TEXT_EMBEDDING_CACHE_DIR`, and the dataset paths in the
+corresponding shell script before running it. All preparation and evaluation
+entrypoints default to four-GPU sharding with `CUDA_VISIBLE_DEVICES=0,1,2,3`;
+set it to a single ID only when a single-GPU run is required. Existing cache
+entries are reused unless `OVERWRITE=true` is set.
 
 ### NAVSIM v1
 
 NAVSIM v1 uses the package installed in the active environment:
 
 ```bash
+# Export NAVSIM v1 prompt embeddings
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash experiments/navsimv1/scripts/evaluation/precompute_suv_navsimv1_pdm_text_embeds.sh
 
+# Run PDM scoring with the exported cache
 METRIC_CACHE_PATH=/path/to/navsim_v1/metric_cache \
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash experiments/navsimv1/scripts/evaluation/run_pdm_score.sh
@@ -252,9 +293,11 @@ embedding cache once; this command includes both `navtest` and
 `navhard_two_stage` prompts:
 
 ```bash
+# Export one shared cache for navtest and navhard_two_stage
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash experiments/navsimv2/scripts/evaluation/precompute_text_embeddings.sh
 
+# Run navtest EPDMS scoring with the exported cache
 METRIC_CACHE_PATH=/path/to/navsim_v2/metric_cache \
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash experiments/navsimv2/scripts/evaluation/run_epdm_score.sh
