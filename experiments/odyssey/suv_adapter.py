@@ -71,6 +71,24 @@ class SUVPlanner(NavsimPlanner):
         from experiments.navsimv1.pdm_agent import SUVNavsimV1Agent
 
         class _OdysseyAgent(SUVNavsimV1Agent):
+            def get_sensor_config(self):
+                from navsim.common.dataclasses import SensorConfig
+
+                if hasattr(SensorConfig, "build_front_only_sensors"):
+                    return SensorConfig.build_front_only_sensors(include=True)
+                # The NAVSIM revision in the SUV env only has build_all_sensors.
+                return SensorConfig(
+                    cam_f0=True,
+                    cam_l0=False,
+                    cam_l1=False,
+                    cam_l2=False,
+                    cam_r0=False,
+                    cam_r1=False,
+                    cam_r2=False,
+                    cam_b0=False,
+                    lidar_pc=False,
+                )
+
             def initialize(self) -> None:
                 if self.model is not None:
                     return
