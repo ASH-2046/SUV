@@ -1,0 +1,15 @@
+# Odyssey closed-loop profile for the released NAVSIM SUV agent.
+# Source the H20 env first: source ~/odyssey_env.sh
+model:
+  name: suv
+  python: ${SUV_PYTHON}
+  repo: ${SUV_ROOT}
+  agent_config: suv_odyssey
+  checkpoint: ${SUV_CHECKPOINT}
+  adapter: suv_adapter.py:SUVPlanner
+  overrides: []
+history_times_s: [-1.5, -1.0, -0.5, 0.0]
+camera_times_s:
+  CAM_F0: [-1.5, -1.0, -0.5, 0.0]
+navigation: {driving_command: true, sd_route: none}
+output: {plan_dt: 0.5, shape: [8, 3]}

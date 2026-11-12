@@ -1,0 +1,4 @@
+# Placeholder required by Odyssey's agent-config check.
+# SUVPlanner builds SUVNavsimV1Agent itself and does not compose this file.
+_target_: experiments.navsimv1.pdm_agent.SUVNavsimV1Agent
+checkpoint_path: null
